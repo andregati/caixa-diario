@@ -1,0 +1,100 @@
+version: '3'
+
+services:
+  mysql:
+    image: mysql:latest
+    restart: always
+    #antigo
+    #command: --default-authentication-plugin=mysql_native_password
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+    volumes:  
+      #novo
+      - ./mysql/initialize.sql:/docker-entrypoint-initdb.d/1.sql
+      - ./mysql/data/db:/var/lib/mysql
+      #antigo
+      #- /home/andre/workspace/mysql/data/db:/var/lib/mysql
+    ports:
+      - "8036:3306"
+    container_name: mysql-container
+    hostname: mysql
+    networks:
+      static-network:
+        ipv4_address: 172.19.0.3     
+  adminer:
+    image: adminer
+    restart: always
+    ports:
+      - 8083:8080
+    container_name: adminer-container
+    networks:
+      static-network:
+        ipv4_address: 172.19.0.14         
+      
+  redis_cache:
+    image: redis
+    restart: always
+    volumes:
+      - ./redis_cache/conf:/usr/local/etc/redis
+    ports:
+      - 13000:6379
+    container_name: redis_cache-container
+    networks:
+      static-network:
+        ipv4_address: 172.19.0.4    
+        
+  redis_queue:
+    image: redis
+    restart: always
+    volumes:
+      - ./redis_queue/conf:/usr/local/etc/redis
+    ports:
+      - 11000:6379
+    container_name: redis_queue-container
+    networks:
+      static-network:
+        ipv4_address: 172.19.0.41    
+ 
+  redis_socketio:
+    image: redis
+    restart: always
+    volumes:
+      - ./redis_socketio/conf:/usr/local/etc/redis
+    ports:
+      - 12000:6379
+    container_name: redis_socketio-container
+    networks:
+      static-network:
+        ipv4_address: 172.19.0.43    
+        
+  next-caixa:
+    container_name: next-caixa
+    build:
+      context: ./client-app
+      dockerfile: dev.Dockerfile
+    depends_on:
+      - mysql
+    # Set environment variables directly in the docker-compose file
+    environment:
+      ENV_VARIABLE: ${ENV_VARIABLE}
+      NEXT_PUBLIC_ENV_VARIABLE: ${NEXT_PUBLIC_ENV_VARIABLE}
+
+    volumes:
+      - type: bind
+        source: ./client-app
+        target: /app                
+      
+    #restart: always
+    ports:
+      - 3055:3000
+    networks:
+      static-network:
+        ipv4_address: 172.19.0.55  
+ 
+networks:
+  static-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.19.0.0/16
+          gateway: 172.19.0.1
